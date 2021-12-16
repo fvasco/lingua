@@ -421,11 +421,11 @@ class LanguageDetector internal constructor(
             synchronized(modelCache) {
                 modelCache[language]?.let { return it }
             }
-            val jsonLanguageModels: Sequence<JsonLanguageModel> = (1..5).asSequence().map { ngramLength ->
-                val fileName = "${Ngram.getNgramNameByLength(ngramLength)}s.json"
-                val filePath = "/language-models/${language.isoCode639_1}/$fileName"
+            val jsonLanguageModels: Sequence<JsonLanguageModel> = (1..5).asSequence().mapNotNull { ngramLength ->
+                val filePath =
+                    "/language-models/${language.isoCode639_1}/${Ngram.getNgramNameByLength(ngramLength)}s.json"
                 Language::class.java.getResourceAsStream(filePath)
-                    .use { Json.decodeFromStream(JsonLanguageModel.serializer(), it) }
+                    ?.use { Json.decodeFromStream(JsonLanguageModel.serializer(), it) }
             }
             val model = TrainingDataLanguageModel.fromJson(language, jsonLanguageModels)
             synchronized(modelCache) {
