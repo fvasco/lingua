@@ -18,12 +18,11 @@ package com.github.pemistahl.lingua.internal
 
 import com.github.pemistahl.lingua.api.Language
 import com.github.pemistahl.lingua.internal.util.extension.incrementCounter
-import it.unimi.dsi.fastutil.objects.Object2DoubleMap
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.util.TreeMap
 
 @Serializable
 internal data class JsonLanguageModel(val language: Language, val ngrams: Map<Fraction, String>)
@@ -32,9 +31,9 @@ internal data class TrainingDataLanguageModel(
     val language: Language,
     val absoluteFrequencies: Map<Ngram, Int>,
     val relativeFrequencies: Map<Ngram, Fraction>,
-    val jsonRelativeFrequencies: Object2DoubleMap<String>
+    val jsonRelativeFrequencies: RelativeFrequencies
 ) {
-    fun getRelativeFrequency(ngram: Ngram): Double = jsonRelativeFrequencies.getDouble(ngram.value)
+    fun getRelativeFrequency(ngram: Ngram): Float = jsonRelativeFrequencies[ngram.value]
 
     fun toJson(): String {
         val ngrams = mutableMapOf<Fraction, MutableList<Ngram>>()
@@ -77,29 +76,26 @@ internal data class TrainingDataLanguageModel(
                 language,
                 absoluteFrequencies,
                 relativeFrequencies,
-                Object2DoubleOpenHashMap()
+                RelativeFrequencies.build(List(5) { TreeMap() })
             )
         }
 
         fun fromJson(json: String): TrainingDataLanguageModel {
             val jsonLanguageModel = Json.decodeFromString<JsonLanguageModel>(json)
-            val jsonRelativeFrequencies = Object2DoubleOpenHashMap<String>()
+            val jsonRelativeFrequencyMaps = List(5) { TreeMap<String, Float>() }
 
             for ((fraction, ngrams) in jsonLanguageModel.ngrams) {
-                val fractionAsDouble = fraction.toDouble()
+                val fractionAsFloat = fraction.toFloat()
                 for (ngram in ngrams.split(' ')) {
-                    jsonRelativeFrequencies.put(ngram, fractionAsDouble)
+                    jsonRelativeFrequencyMaps[ngram.length - 1][ngram] = fractionAsFloat
                 }
             }
-
-            // Trim to reduce in-memory model size
-            jsonRelativeFrequencies.trim()
 
             return TrainingDataLanguageModel(
                 language = jsonLanguageModel.language,
                 absoluteFrequencies = emptyMap(),
                 relativeFrequencies = emptyMap(),
-                jsonRelativeFrequencies = jsonRelativeFrequencies
+                jsonRelativeFrequencies = RelativeFrequencies.build(jsonRelativeFrequencyMaps)
             )
         }
 
@@ -145,6 +141,49 @@ internal data class TrainingDataLanguageModel(
             }
 
             return ngramProbabilities
+        }
+    }
+
+    internal class RelativeFrequencies private constructor(private val data: Array<Entries>) {
+
+        operator fun get(ngram: String): Float = data[ngram.length - 1][ngram]
+
+        private class Entries(private val chars: CharArray, private val frequencies: FloatArray) {
+
+            val size get() = frequencies.size
+
+            operator fun get(ngram: String): Float {
+                var low = 0
+                var high = size - 1
+                while (low <= high) {
+                    val middle = (low + high) / 2
+                    val diff = compareNgram(middle, ngram)
+                    if (diff < 0) low = middle + 1
+                    else if (diff > 0) high = middle - 1
+                    else return frequencies[middle]
+                }
+                return 0F
+            }
+
+            private fun compareNgram(pos: Int, ngram: String): Int {
+                val base = pos * ngram.length
+                repeat(ngram.length) { i ->
+                    val diff = chars[base + i].compareTo(ngram[i])
+                    if (diff != 0) return diff
+                }
+                return 0
+            }
+        }
+
+        companion object {
+            fun build(jsonRelativeFrequencyMaps: List<TreeMap<String, Float>>): RelativeFrequencies {
+                val data = jsonRelativeFrequencyMaps.map { map ->
+                    val chars = map.keys.joinToString(separator = "").toCharArray()
+                    val float = map.values.toFloatArray()
+                    Entries(chars, float)
+                }
+                return RelativeFrequencies(data.toTypedArray())
+            }
         }
     }
 }
