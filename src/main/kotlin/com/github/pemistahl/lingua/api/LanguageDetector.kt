@@ -24,7 +24,6 @@ import com.github.pemistahl.lingua.internal.Constant.NO_LETTER
 import com.github.pemistahl.lingua.internal.Constant.NUMBERS
 import com.github.pemistahl.lingua.internal.Constant.PUNCTUATION
 import com.github.pemistahl.lingua.internal.Constant.isJapaneseAlphabet
-import com.github.pemistahl.lingua.internal.util.extension.containsAnyOf
 import com.github.pemistahl.lingua.internal.util.extension.incrementCounter
 import com.github.pemistahl.lingua.internal.util.extension.isLogogram
 import kotlinx.serialization.json.Json
@@ -332,11 +331,14 @@ class LanguageDetector internal constructor(
 
         for (word in words) {
             for ((characters, languages) in CHARS_TO_LANGUAGES_MAPPING) {
-                if (word.containsAnyOf(characters)) {
-                    for (language in languages) {
-                        languageCounts.incrementCounter(language)
+                for (character in characters) {
+                    if (character in word) {
+                        for (language in languages) {
+                            if (filteredLanguages.contains(language)) {
+                                languageCounts.incrementCounter(language)
+                            }
+                        }
                     }
-                    break
                 }
             }
         }
