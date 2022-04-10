@@ -382,9 +382,11 @@ nexusPublishing {
     }
 }
 
+/*
 signing {
     sign(publishing.publications["lingua"])
 }
+*/
 
 repositories {
     mavenCentral()
