@@ -21,7 +21,7 @@ import com.github.pemistahl.lingua.internal.util.extension.incrementCounter
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import java.util.TreeMap
+import java.util.*
 
 @Serializable
 internal data class JsonLanguageModel(val language: Language, val ngrams: Map<Fraction, String>)

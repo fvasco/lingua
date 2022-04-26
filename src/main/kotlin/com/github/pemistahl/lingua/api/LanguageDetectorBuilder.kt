@@ -16,6 +16,8 @@
 
 package com.github.pemistahl.lingua.api
 
+import java.util.*
+
 /**
  * Configures and creates an instance of [LanguageDetector].
  */
@@ -27,7 +29,7 @@ class LanguageDetectorBuilder private constructor(
     /**
      * Creates and returns the configured instance of [LanguageDetector].
      */
-    fun build() = LanguageDetector(languages.toMutableSet(), minimumRelativeDistance, isEveryLanguageModelPreloaded)
+    fun build() = LanguageDetector(EnumSet.copyOf(languages), minimumRelativeDistance, isEveryLanguageModelPreloaded)
 
     /**
      * Sets the desired value for the minimum relative distance measure.
@@ -125,7 +127,7 @@ class LanguageDetectorBuilder private constructor(
         @JvmStatic
         fun fromAllLanguagesWithout(vararg languages: Language): LanguageDetectorBuilder {
             val languagesToLoad = Language.values().toMutableList()
-            languagesToLoad.removeAll(arrayOf(Language.UNKNOWN, *languages))
+            languagesToLoad.removeAll(setOf(Language.UNKNOWN, *languages))
             require(languagesToLoad.size >= 2) { MISSING_LANGUAGE_MESSAGE }
             return LanguageDetectorBuilder(languagesToLoad)
         }
