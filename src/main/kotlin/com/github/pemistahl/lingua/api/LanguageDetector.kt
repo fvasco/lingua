@@ -429,7 +429,8 @@ class LanguageDetector internal constructor(
             val jsonLanguageModels: Sequence<JsonLanguageModel> = (1..5).asSequence().map { ngramLength ->
                 val fileName = "${Ngram.getNgramNameByLength(ngramLength)}s.json"
                 val filePath = "/language-models/${language.isoCode639_1}/$fileName"
-                Language::class.java.getResourceAsStream(filePath).use(Json::decodeFromStream)
+                Language::class.java.getResourceAsStream(filePath)
+                    .use { Json.decodeFromStream(JsonLanguageModel.serializer(), it) }
             }
             val model = TrainingDataLanguageModel.fromJson(language, jsonLanguageModels, builderCache)
             synchronized(modelCache) {

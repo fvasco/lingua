@@ -44,6 +44,7 @@ val linguaMainClass: String by project
 val linguaCsvHeader: String by project
 val githubPackagesUrl: String by project
 
+val compileKotlin: KotlinCompile by tasks
 val compileTestKotlin: KotlinCompile by tasks
 
 group = linguaGroupId
@@ -51,8 +52,8 @@ version = linguaVersion
 description = linguaDescription
 
 plugins {
-    kotlin("jvm") version "1.6.0"
-    kotlin("plugin.serialization") version "1.6.0"
+    kotlin("jvm") version "1.6.21"
+    kotlin("plugin.serialization") version "1.6.21"
     id("org.jlleitschuh.gradle.ktlint") version "10.2.0"
     id("com.adarshr.test-logger") version "3.1.0"
     id("com.asarkar.gradle.build-time-tracker") version "3.0.1"
@@ -61,7 +62,6 @@ plugins {
     id("com.github.johnrengelman.shadow") version "7.1.0"
     id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
     `maven-publish`
-    signing
     jacoco
 }
 
@@ -85,10 +85,11 @@ val accuracyReportImplementation by configurations.getting {
 
 configurations["accuracyReportRuntimeOnly"].extendsFrom(configurations.runtimeOnly.get())
 
-compileTestKotlin.kotlinOptions.jvmTarget = "1.8"
+compileKotlin.kotlinOptions.jvmTarget = "11"
+compileTestKotlin.kotlinOptions.jvmTarget = "11"
 
 tasks.named("compileAccuracyReportKotlin", KotlinCompile::class) {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "11"
 }
 
 tasks.withType<Test> {
@@ -253,7 +254,7 @@ tasks.register<PythonTask>("writeAccuracyTable") {
 
 tasks.withType<DokkaTask>().configureEach {
     dokkaSourceSets.configureEach {
-        jdkVersion.set(6)
+        jdkVersion.set(11)
         reportUndocumented.set(false)
         perPackageOption {
             matchingRegex.set(".*\\.(app|internal).*")
@@ -302,11 +303,11 @@ tasks.register<JavaExec>("runLinguaOnConsole") {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.6.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.6.21")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")
-    testImplementation("org.assertj:assertj-core:3.21.0")
+    testImplementation("org.assertj:assertj-core:3.22.0")
     testImplementation("io.mockk:mockk:1.12.1")
 
     accuracyReportImplementation("com.optimaize.languagedetector:language-detector:0.6")
@@ -333,7 +334,7 @@ publishing {
             from(components["kotlin"])
 
             artifact(tasks["sourcesJar"])
-            artifact(tasks["jarWithDependencies"])
+            // artifact(tasks["jarWithDependencies"])
             artifact(tasks["dokkaJavadocJar"])
 
             pom {
@@ -374,16 +375,6 @@ publishing {
             }
         }
     }
-}
-
-nexusPublishing {
-    repositories {
-        sonatype()
-    }
-}
-
-signing {
-    sign(publishing.publications["lingua"])
 }
 
 repositories {
