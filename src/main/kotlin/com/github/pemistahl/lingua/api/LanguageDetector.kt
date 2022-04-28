@@ -29,6 +29,8 @@ import com.github.pemistahl.lingua.internal.util.extension.isLogogram
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import java.util.*
+import java.util.concurrent.Callable
+import java.util.concurrent.ForkJoinPool
 import kotlin.math.ln
 
 /**
@@ -399,8 +401,11 @@ class LanguageDetector internal constructor(
         }
 
     private fun preloadLanguageModels() {
-        for (language in languages) {
-            languageModels[language] = loadLanguageModel(language)
+        val threadPool = ForkJoinPool.commonPool()
+        languages.map { language ->
+            language to threadPool.submit(Callable { loadLanguageModel(language) })
+        }.forEach { (language, future) ->
+            languageModels[language] = future.get()
         }
     }
 
