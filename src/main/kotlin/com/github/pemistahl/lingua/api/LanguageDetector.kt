@@ -24,6 +24,7 @@ import com.github.pemistahl.lingua.internal.Constant.NO_LETTER
 import com.github.pemistahl.lingua.internal.Constant.NUMBERS
 import com.github.pemistahl.lingua.internal.Constant.PUNCTUATION
 import com.github.pemistahl.lingua.internal.Constant.isJapaneseAlphabet
+import com.github.pemistahl.lingua.internal.util.SubSequence
 import com.github.pemistahl.lingua.internal.util.extension.incrementCounter
 import com.github.pemistahl.lingua.internal.util.extension.isLogogram
 import kotlinx.serialization.json.Json
@@ -161,20 +162,20 @@ class LanguageDetector internal constructor(
             .replace(MULTIPLE_WHITESPACE, " ")
     }
 
-    internal fun splitTextIntoWords(text: String): List<String> {
-        val words = mutableListOf<String>()
+    internal fun splitTextIntoWords(text: String): List<CharSequence> {
+        val words = mutableListOf<CharSequence>()
         var nextWordStart = 0
         for (i in text.indices) {
             val char = text[i]
 
             if (char == ' ') {
                 if (nextWordStart != i) {
-                    words.add(text.substring(nextWordStart, i))
+                    words.add(SubSequence(text, nextWordStart, i - nextWordStart))
                 }
                 nextWordStart = i + 1
             } else if (char.isLogogram()) {
                 if (nextWordStart != i) {
-                    words.add(text.substring(nextWordStart, i))
+                    words.add(SubSequence(text, nextWordStart, i - nextWordStart))
                 }
 
                 words.add(text[i].toString())
@@ -183,7 +184,7 @@ class LanguageDetector internal constructor(
         }
 
         if (nextWordStart != text.length) {
-            words.add(text.substring(nextWordStart, text.length))
+            words.add(SubSequence(text, nextWordStart, text.length - nextWordStart))
         }
         return words
     }
@@ -221,7 +222,7 @@ class LanguageDetector internal constructor(
         return summedUpProbabilities.filter { it.value != 0.0 }
     }
 
-    internal fun detectLanguageWithRules(words: List<String>): Language {
+    internal fun detectLanguageWithRules(words: List<CharSequence>): Language {
         val totalLanguageCounts = mutableMapOf<Language, Int>()
 
         for (word in words) {
@@ -295,13 +296,10 @@ class LanguageDetector internal constructor(
         val (mostFrequentLanguage, firstCharCount) = sortedTotalLanguageCounts[0]
         val (_, secondCharCount) = sortedTotalLanguageCounts[1]
 
-        return when {
-            firstCharCount == secondCharCount -> UNKNOWN
-            else -> mostFrequentLanguage
-        }
+        return if (firstCharCount == secondCharCount) UNKNOWN else mostFrequentLanguage
     }
 
-    internal fun filterLanguagesByRules(words: List<String>): Set<Language> {
+    internal fun filterLanguagesByRules(words: List<CharSequence>): Set<Language> {
         val detectedAlphabets = mutableMapOf<Alphabet, Int>()
 
         for (word in words) {
