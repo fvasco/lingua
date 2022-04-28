@@ -75,18 +75,12 @@ internal data class TrainingDataLanguageModel(
                 language,
                 absoluteFrequencies,
                 relativeFrequencies,
-                RelativeFrequencies.build(emptySequence(), BuilderCache())
+                RelativeFrequencies.build(emptySequence())
             )
         }
 
         fun fromJson(
-            language: Language, jsonLanguageModels: Sequence<JsonLanguageModel>,
-        ): TrainingDataLanguageModel =
-            fromJson(language, jsonLanguageModels, BuilderCache())
-
-        internal fun fromJson(
-            language: Language, jsonLanguageModels: Sequence<JsonLanguageModel>,
-            builderCache: BuilderCache = BuilderCache()
+            language: Language, jsonLanguageModels: Sequence<JsonLanguageModel>
         ): TrainingDataLanguageModel {
             val jsonDataSequence =
                 sequence {
@@ -104,7 +98,7 @@ internal data class TrainingDataLanguageModel(
                 language = language,
                 absoluteFrequencies = emptyMap(),
                 relativeFrequencies = emptyMap(),
-                jsonRelativeFrequencies = RelativeFrequencies.build(jsonDataSequence, builderCache)
+                jsonRelativeFrequencies = RelativeFrequencies.build(jsonDataSequence)
             )
         }
 
@@ -153,12 +147,6 @@ internal data class TrainingDataLanguageModel(
         }
     }
 
-    internal class BuilderCache(
-        val keysCache: MutableMap<List<Char>, CharArray> = hashMapOf(),
-        val floatsCache: MutableMap<List<Float>, FloatArray> = hashMapOf(),
-        val nodeCache: MutableMap<RelativeFrequencies, RelativeFrequencies> = hashMapOf(RelativeFrequencies.Leaf(0F) to RelativeFrequencies.EmptyNode)
-    )
-
     /**
      * N-ary search tree.
      */
@@ -170,7 +158,7 @@ internal data class TrainingDataLanguageModel(
 
         protected abstract fun getImpl(ngram: CharSequence, depth: Int): Float
 
-        internal class GenericNode(
+        private class GenericNode(
             override val frequency: Float,
             private val keys: CharArray,
             private val values: Array<RelativeFrequencies>
@@ -196,7 +184,7 @@ internal data class TrainingDataLanguageModel(
         /**
          * A node with one leaf child
          */
-        internal data class PreLeaf1(
+        private data class PreLeaf1(
             override val frequency: Float,
             private val key: Char,
             private val value: Float
@@ -212,7 +200,7 @@ internal data class TrainingDataLanguageModel(
         /**
          * A node with only 2 leaf children
          */
-        internal data class PreLeaf2(
+        private data class PreLeaf2(
             override val frequency: Float,
             private val key1: Char,
             private val key2: Char,
@@ -233,7 +221,7 @@ internal data class TrainingDataLanguageModel(
         /**
          * A node with only 3 leaf children
          */
-        internal data class PreLeaf3(
+        private data class PreLeaf3(
             override val frequency: Float,
             private val key1: Char,
             private val key2: Char,
@@ -269,7 +257,7 @@ internal data class TrainingDataLanguageModel(
         /**
          * A node with only 4 leaf children
          */
-        internal data class PreLeaf4(
+        private data class PreLeaf4(
             override val frequency: Float,
             private val key1: Char,
             private val key2: Char,
@@ -314,7 +302,7 @@ internal data class TrainingDataLanguageModel(
         /**
          * A node with only 5 leaf children
          */
-        internal data class PreLeaf5(
+        private data class PreLeaf5(
             override val frequency: Float,
             private val key1: Char,
             private val key2: Char,
@@ -362,9 +350,9 @@ internal data class TrainingDataLanguageModel(
         }
 
         /**
-         * A node with only 5 leaf children
+         * A node with only 6 leaf children
          */
-        internal data class PreLeaf6(
+        private data class PreLeaf6(
             override val frequency: Float,
             private val key1: Char,
             private val key2: Char,
@@ -417,9 +405,69 @@ internal data class TrainingDataLanguageModel(
         }
 
         /**
+         * A node with only 7 leaf children
+         */
+        private data class PreLeaf7(
+            override val frequency: Float,
+            private val key1: Char,
+            private val key2: Char,
+            private val key3: Char,
+            private val key4: Char,
+            private val key5: Char,
+            private val key6: Char,
+            private val key7: Char,
+            private val value1: Float,
+            private val value2: Float,
+            private val value3: Float,
+            private val value4: Float,
+            private val value5: Float,
+            private val value6: Float,
+            private val value7: Float
+        ) : RelativeFrequencies() {
+
+            constructor(frequency: Float, keys: CharArray, values: List<Float>) :
+                this(
+                    frequency = frequency,
+                    key1 = keys[0],
+                    key2 = keys[1],
+                    key3 = keys[2],
+                    key4 = keys[3],
+                    key5 = keys[4],
+                    key6 = keys[5],
+                    key7 = keys[6],
+                    value1 = values[0],
+                    value2 = values[1],
+                    value3 = values[2],
+                    value4 = values[3],
+                    value5 = values[4],
+                    value6 = values[5],
+                    value7 = values[6]
+                )
+
+            override fun getImpl(ngram: CharSequence, depth: Int): Float {
+                if (depth == ngram.length) return frequency
+                if (depth + 1 == ngram.length) {
+                    val key = ngram[depth]
+                    if (key <= key1) {
+                        if (key == key1) return value1
+                    } else if (key >= key7) {
+                        if (key == key7) return value7
+                    } else if (key < key4) {
+                        if (key2 == key) return value2
+                        if (key3 == key) return value3
+                    } else if (key > key4) {
+                        if (key5 == key) return value5
+                        if (key6 == key) return value6
+                    } else return value4
+                }
+                return 0F
+            }
+        }
+
+        /**
          * A node with only leaf children
          */
-        internal class PreLeafN(
+        private class PreLeafN(
             override val frequency: Float,
             private val keys: CharArray,
             private val values: FloatArray
@@ -438,12 +486,12 @@ internal data class TrainingDataLanguageModel(
         /**
          * A leaf node
          */
-        internal data class Leaf(override val frequency: Float) : RelativeFrequencies() {
+        private data class Leaf(override val frequency: Float) : RelativeFrequencies() {
             override fun getImpl(ngram: CharSequence, depth: Int): Float =
                 if (depth == ngram.length) frequency else 0F
         }
 
-        internal object EmptyNode : RelativeFrequencies() {
+        private object EmptyNode : RelativeFrequencies() {
             override val frequency: Float get() = 0F
             override fun getImpl(ngram: CharSequence, depth: Int) = 0F
         }
@@ -460,7 +508,15 @@ internal data class TrainingDataLanguageModel(
                 node.frequency = frequency
             }
 
-            fun toRelativeFrequencies(builderCache: BuilderCache): RelativeFrequencies {
+            private class BuilderCache(
+                val keysCache: MutableMap<List<Char>, CharArray> = hashMapOf(),
+                val nodeCache: MutableMap<RelativeFrequencies, RelativeFrequencies> =
+                    hashMapOf(Leaf(0F) to EmptyNode)
+            )
+
+            fun toRelativeFrequencies(): RelativeFrequencies = toRelativeFrequencies(BuilderCache())
+
+            private fun toRelativeFrequencies(builderCache: BuilderCache): RelativeFrequencies {
                 if (children.size == 0) {
                     // leaf node
                     val node = Leaf(frequency)
@@ -468,7 +524,7 @@ internal data class TrainingDataLanguageModel(
                 }
 
                 var keysArray = children.keys.toCharArray()
-                if (keysArray.size < 256) {
+                if (keysArray.size < 32) {
                     keysArray = builderCache.keysCache.computeIfAbsent(keysArray.asList()) { keysArray }
                 }
 
@@ -504,13 +560,14 @@ internal data class TrainingDataLanguageModel(
                         val node = PreLeaf6(frequency, keysArray, children.values.map { it.frequency })
                         return builderCache.nodeCache.computeIfAbsent(node) { node }
                     }
+                    if (children.size == 7) {
+                        val node = PreLeaf7(frequency, keysArray, children.values.map { it.frequency })
+                        return builderCache.nodeCache.computeIfAbsent(node) { node }
+                    }
 
-                    var valuesArray = FloatArray(children.size)
+                    val valuesArray = FloatArray(children.size)
                     children.values.forEachIndexed { index, mutableNode ->
                         valuesArray[index] = mutableNode.frequency
-                    }
-                    if (valuesArray.size < 256) {
-                        valuesArray = builderCache.floatsCache.computeIfAbsent(valuesArray.asList()) { valuesArray }
                     }
                     return PreLeafN(frequency = frequency, keys = keysArray, values = valuesArray)
                 }
@@ -530,15 +587,12 @@ internal data class TrainingDataLanguageModel(
         }
 
         companion object {
-            internal fun build(
-                relativeFrequencies: Sequence<Pair<String, Float>>,
-                builderCache: BuilderCache
-            ): RelativeFrequencies {
+            internal fun build(relativeFrequencies: Sequence<Pair<String, Float>>): RelativeFrequencies {
                 val mutableRoot = MutableNode()
                 for ((ngram, frequency) in relativeFrequencies) {
                     mutableRoot[ngram] = frequency
                 }
-                return mutableRoot.toRelativeFrequencies(builderCache)
+                return mutableRoot.toRelativeFrequencies()
             }
         }
     }

@@ -388,21 +388,17 @@ class LanguageDetector internal constructor(
         return loadLanguageModels(language).getRelativeFrequency(ngram)
     }
 
-    private fun loadLanguageModels(
-        language: Language,
-        builderCache: TrainingDataLanguageModel.BuilderCache? = null
-    ): TrainingDataLanguageModel =
+    private fun loadLanguageModels(language: Language): TrainingDataLanguageModel =
         if (isEveryLanguageModelPreloaded) languageModels.getValue(language)
         else synchronized(languageModels) {
             languageModels.computeIfAbsent(language) {
-                loadLanguageModel(language, builderCache ?: TrainingDataLanguageModel.BuilderCache())
+                loadLanguageModel(language)
             }
         }
 
     private fun preloadLanguageModels() {
-        val builderCache = TrainingDataLanguageModel.BuilderCache()
         for (language in languages) {
-            languageModels[language] = loadLanguageModel(language, builderCache)
+            languageModels[language] = loadLanguageModel(language)
         }
     }
 
@@ -419,10 +415,7 @@ class LanguageDetector internal constructor(
     private companion object {
         private val modelCache = HashMap<Language, TrainingDataLanguageModel>()
 
-        private fun loadLanguageModel(
-            language: Language,
-            builderCache: TrainingDataLanguageModel.BuilderCache
-        ): TrainingDataLanguageModel {
+        private fun loadLanguageModel(language: Language): TrainingDataLanguageModel {
             synchronized(modelCache) {
                 modelCache[language]?.let { return it }
             }
@@ -432,7 +425,7 @@ class LanguageDetector internal constructor(
                 Language::class.java.getResourceAsStream(filePath)
                     .use { Json.decodeFromStream(JsonLanguageModel.serializer(), it) }
             }
-            val model = TrainingDataLanguageModel.fromJson(language, jsonLanguageModels, builderCache)
+            val model = TrainingDataLanguageModel.fromJson(language, jsonLanguageModels)
             synchronized(modelCache) {
                 modelCache.putIfAbsent(language, model)
                 return modelCache.getValue(language)
